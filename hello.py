@@ -1,11 +1,15 @@
 from flask import Flask, request, render_template
 from flask_bootstrap import Bootstrap
 from flask_moment import Moment
+from flask_wtf import FlaskForm
+from wtforms import StringField, SubmitField
+from wtforms.validators import DataRequired
 from datetime import datetime
 
 app = Flask(__name__)
 bootstrap = Bootstrap(app)
 moment = Moment(app)
+app.config['SECRET_KEY'] = 'hard to guess string'
 
 
 @app.route('/')
