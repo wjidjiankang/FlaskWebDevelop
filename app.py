@@ -1,13 +1,25 @@
-from flask import Flask, request, render_template, session, redirect, url_for, flash
+from flask import Flask, render_template, session, redirect, url_for, flash
 from flask_bootstrap import Bootstrap
 from flask_moment import Moment
+from flask_sqlalchemy import SQLAlchemy
+from flask_migrate import Migrate
 from datetime import datetime
 from forms import NameForm
+import os
+
+
 
 app = Flask(__name__)
 bootstrap = Bootstrap(app)
 moment = Moment(app)
 app.config['SECRET_KEY'] = 'hard to guess string'
+
+basedir = os.path.abspath(app.root_path)
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(basedir, 'data.db')
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+db = SQLAlchemy(app)
+migrate = Migrate(app, db)
+
 
 
 @app.route('/', methods=['GET', 'POST'])
