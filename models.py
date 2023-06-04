@@ -22,11 +22,11 @@ class Role(db.Model):
         super(Role, self).__init__(**kwargs)
         if self.permissions is None:
             self.permissions = 0
-        if self.role is None:
-            # if self.email == current_app.config['FLASKY_ADMIN']:
-            #     self.role = Role.query.filter_by(name="Administrator").first()
-            # if self.role is None:
-                self.role = Role.query.filter_by(default=True).first()
+        # if self.role is None:
+        #     # if self.email == current_app.config['FLASKY_ADMIN']:
+        #     #     self.role = Role.query.filter_by(name="Administrator").first()
+        #     # if self.role is None:
+        #         self.role = Role.query.filter_by(default=True).first()
 
 
     def add_permission(self, perm):
@@ -61,11 +61,7 @@ class Role(db.Model):
             role.default = (role.name == default_role)
         db.session.commit()
 
-    def can(self, perm):
-        return self.role is not None and self.role.has_permission(perm)
 
-    def is_administrator(self):
-        return self.can(Permission.ADMIN)
 
 
 class AnonymousUser(AnonymousUserMixin):
@@ -75,7 +71,7 @@ class AnonymousUser(AnonymousUserMixin):
     def is_administrator(self):
         return False
 
-login_manager.anonymous_user = AnonymousUser
+
 
 
 class User(UserMixin, db.Model):
@@ -91,6 +87,7 @@ class User(UserMixin, db.Model):
     member_since = db.Column(db.DateTime(), default=datetime.utcnow)
     last_seen = db.Column(db.DateTime(), default=datetime.utcnow)
     role_id = db.Column(db.Integer, db.ForeignKey('roles.id'))
+    posts = db.relationship('Post', backref='author', lazy='dynamic')
 
     def __repr__(self):
         return '<User {}'.format(self.username)
@@ -111,6 +108,21 @@ class User(UserMixin, db.Model):
         db.session.add(self)
         db.session.commit()
 
+    def __init__(self, **kwargs):
+        super(User, self).__init__(**kwargs)
+        if self.role is None:
+            # if self.email == current_app.config['FLASKY_ADMIN']:
+            #     self.role = Role.query.filter_by(name='Administrator').first()
+        # if self.role is None:
+            self.role = Role.query.filter_by(default=True).first()
+
+    def can(self, perm):
+        return self.role is not None and self.role.has_permission(perm)
+
+    def is_administrator(self):
+        return self.can(Permission.ADMIN)
+
+
 
 class Permission:
     FOLLOW = 1
@@ -119,3 +131,10 @@ class Permission:
     MODERATE = 8
     ADMIN = 16
 
+
+class Post(db.Model):
+    __tablename__ = 'posts'
+    id = db.Column(db.Integer, primary_key=True)
+    body = db.Column(db.Text)
+    timestamp = db.Column(db.DateTime, index=True, default=datetime.utcnow())
+    author_id = db.Column(db.Integer, db.ForeignKey('users.id'))

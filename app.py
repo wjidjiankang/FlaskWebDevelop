@@ -5,8 +5,8 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from flask_login import LoginManager,UserMixin,login_user, logout_user, login_required, current_user
 from datetime import datetime
-from forms import NameForm, LoginForm, RegistrationForm
-from models import User, Role, db
+from forms import NameForm, LoginForm, RegistrationForm, EditProfileForm, PostForm
+from models import User, Role, db, Permission, Post, AnonymousUser
 # from models import db
 import os
 from decorators import admin_required, permission_required
@@ -27,26 +27,36 @@ migrate = Migrate(app, db)
 login_manager = LoginManager()
 login_manager.init_app(app)
 
+login_manager.anonymous_user = AnonymousUser
+
 
 @app.route('/', methods=['GET', 'POST'])
 def index():
     # name = None
-    form = NameForm()
-    if form.validate_on_submit():
-        old_name = session.get('name')
-        if old_name is not None and old_name != form.name.data:
-            flash('Looks like you have changed your name!')
-        session['name'] = form.name.data
+    form = PostForm()
+    if current_user.can(Permission.WRITE) and form.validate_on_submit():
+        post = Post(body=form.body.data, author=current_user._get_current_object())
+        db.session.add(post)
+        db.session.commit()
         return redirect(url_for('index'))
+    posts = Post.query.order_by(Post.timestamp.desc()).all()
+    return render_template('index.html', form=form,posts=posts )
+        # old_name = session.get('name')
+        # if old_name is not None and old_name != form.name.data:
+        #     flash('Looks like you have changed your name!')
+        # session['name'] = form.name.data
+        # return redirect(url_for('index'))
         # name = form.name.data
         # form.name.data = ''
-    return render_template('index.html', current_time=datetime.utcnow(), form=form, name=session.get('name'))
+    # return render_template('index.html', current_time=datetime.utcnow(), form=form, name=session.get('name'))
 
 
-@app.route('/user/')
-@app.route('/user/<name>/')
-def user(name=None):
-    return render_template('user.html', user=name)
+# @app.route('/user/')
+@app.route('/user/<username>/')
+def user(username=None):
+    user = User.query.filter_by(username=username).first_or_404()
+    print (user)
+    return render_template('user.html', user=user)
 
 
 @app.errorhandler(404)
@@ -124,6 +134,23 @@ def before_request():
                 and request.endpoint != 'static':
             return redirect(url_for('index'))
 
+
+@app.route('/edit_profile/', methods=['GET', 'POST'])
+@login_required
+def edit_profile():
+    form = EditProfileForm()
+    if form.validate_on_submit():
+        current_user.name = form.name.data
+        current_user.location = form.location.data
+        current_user.about_me = form.about_me.data
+        db.session.add(current_user._get_current_object())
+        db.session.commit()
+        flash('Your profile had been updated')
+        return redirect(url_for('.user', username=current_user.username))
+    form.name.data = current_user.name
+    form.location.data = current_user.location
+    form.about_me.data = current_user.about_me
+    return render_template('edit_profile.html', form=form)
 
 
 if __name__ == '__main__':
