@@ -3,12 +3,13 @@ from flask_bootstrap import Bootstrap
 from flask_moment import Moment
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
-from flask_login import LoginManager,UserMixin,login_user, logout_user, login_required
+from flask_login import LoginManager,UserMixin,login_user, logout_user, login_required, current_user
 from datetime import datetime
-from forms import NameForm, LoginForm
-# from models import User, Role
+from forms import NameForm, LoginForm, RegistrationForm
+from models import User, Role, db
+# from models import db
 import os
-
+from decorators import admin_required, permission_required
 
 
 
@@ -20,33 +21,11 @@ app.config['SECRET_KEY'] = 'hard to guess string'
 basedir = os.path.abspath(app.root_path)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(basedir, 'data.db')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-db = SQLAlchemy(app)
+# db = SQLAlchemy(app)
+db.init_app(app=app)
 migrate = Migrate(app, db)
 login_manager = LoginManager()
 login_manager.init_app(app)
-
-
-class Role(db.Model):
-    __tablename__ = 'roles'
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(64), unique=True)
-    users = db.relationship('User', backref='role', lazy='dynamic')
-
-    def __repr__(self):
-        return '<Role %r>' % self.name
-
-
-class User(UserMixin, db.Model):
-    __tablename__ = 'users'
-    id = db.Column(db.Integer, primary_key=True)
-    email = db.Column(db.String(64), unique=True, index=True)
-    username = db.Column(db.String(64), unique=True, index=True)
-    password_hash = db.Column(db.String(128))
-    role_id = db.Column(db.Integer, db.ForeignKey('roles.id'))
-
-    def __repr__(self):
-        return '<User {}'.format(self.username)
-
 
 
 @app.route('/', methods=['GET', 'POST'])
@@ -122,7 +101,31 @@ def logout():
     return redirect(url_for('index'))
 
 
+@app.route('/register/', methods=['GET', 'POST'])
+def register():
+    form = RegistrationForm()
+    if form.validate_on_submit():
+        user = User(email=form.email.data, username=form.username.data,
+                    password=form.password.data)
+        db.session.add(user)
+        db.session.commit()
+        flash('you can now login.')
+        return redirect(url_for('login'))
+    return render_template('register.html', form=form)
+
+
+@app.before_request
+def before_request():
+    if current_user.is_authenticated:
+        current_user.ping()
+        # if not current_user.confirmed \
+        if not request.endpoint \
+                and request.blueprint != 'auth' \
+                and request.endpoint != 'static':
+            return redirect(url_for('index'))
+
 
 
 if __name__ == '__main__':
     app.run(debug=True, port=8777)
+    # db.create_all()
