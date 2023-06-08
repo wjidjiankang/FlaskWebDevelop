@@ -41,11 +41,11 @@ def register():
                     password=form.password.data)
         db.session.add(user)
         db.session.commit()
-        token = user.generate_confirmation_token()
-        send_email(user.email, 'Confirm Your Account',
-                   'auth/email/confirm', user=user, token=token)
-        # flash('you can now login.')
-        flash('A confirmation email has been sent to you by email.')
+        # token = user.generate_confirmation_token()
+        # send_email(user.email, 'Confirm Your Account',
+        #            'auth/email/confirm', user=user, token=token)
+        # # flash('you can now login.')
+        # flash('A confirmation email has been sent to you by email.')
         # return redirect(url_for('auth.login'))
         return redirect(url_for('main.index'))
     return render_template('auth/register.html', form=form)
@@ -62,7 +62,7 @@ def edit_profile():
         db.session.add(current_user._get_current_object())
         db.session.commit()
         flash('Your profile had been updated')
-        return redirect(url_for('.user', username=current_user.username))
+        return redirect(url_for('main.user', username=current_user.username))
     form.name.data = current_user.name
     form.location.data = current_user.location
     form.about_me.data = current_user.about_me
@@ -108,13 +108,4 @@ def resend_confirmation():
     return redirect(url_for('main.index'))
 
 
-@auth.before_app_request
-def before_request():
-    if current_user.is_authenticated:
-        current_user.ping()
-        if not current_user.confirmed \
-                and request.endpoint \
-                and request.blueprint != 'auth' \
-                and request.endpoint != 'static':
-            return redirect(url_for('auth.unconfirmed'))
 

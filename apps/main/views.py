@@ -1,5 +1,5 @@
 from datetime import datetime
-from flask import render_template, session, redirect, url_for
+from flask import render_template, session, redirect, url_for, abort, request, current_app
 from . import main
 from .forms import NameForm,PostForm
 from .. import db
@@ -17,9 +17,15 @@ def index():
         post = Post(body=form.body.data, author=current_user._get_current_object())
         db.session.add(post)
         db.session.commit()
-        return redirect(url_for('index'))
+        return redirect(url_for('main.index'))
     posts = Post.query.order_by(Post.timestamp.desc()).all()
-    return render_template('index.html', form=form,posts=posts )
+    page = request.args.get('page', 1, type=int)
+    pagination = Post.query.order_by(Post.timestamp.desc()).paginate(
+            page=page, per_page=current_app.config['FLASKY_POSTS_PER_PAGE'],
+            error_out=False)
+    posts = pagination.items
+
+    return render_template('index.html', form=form,posts=posts, pagination=pagination )
         # old_name = session.get('name')
         # if old_name is not None and old_name != form.name.data:
         #     flash('Looks like you have changed your name!')
@@ -33,9 +39,12 @@ def index():
 # @apps.route('/user/')
 @main.route('/user/<username>/')
 def user(username=None):
-    user = User.query.filter_by(username=username).first_or_404()
+    user = User.query.filter_by(username=username).first()
+    if user is None:
+        abort(404)
     # print (user)
-    return render_template('user.html', user=user)
+    posts = user.posts.order_by(Post.timestamp.desc()).all()
+    return render_template('user.html', user=user, posts=posts)
 
 
 @main.route('/admin')
@@ -49,4 +58,10 @@ def for_admins_only():
 @permission_required(Permission.MODERATE)
 def for_moderators_only():
     return "For comment moderators!"
+
+
+@main.route('/post/<int:id>')
+def post(id):
+    post = Post.query.get_or_404(id)
+    return render_template('post.html', posts=[post])
 

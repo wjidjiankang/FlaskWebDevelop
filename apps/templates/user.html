@@ -34,4 +34,8 @@
         <a class="btn btn-default" href="{{ url_for('auth.edit_profile') }}">Edit Profile</a>
     {% endif %}
 
+    <h3>Posts by {{ user.username }}</h3>
+    {% include '_posts.html' %}
+
+
 {% endblock %}
