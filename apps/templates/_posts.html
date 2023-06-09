@@ -3,7 +3,7 @@
                     <li class="post">
                         <div class="profile-thumbnail">
                             <a href="{{ url_for('.user', username=post.author.username) }}">
-                                <img  class="img-rounded profile-thumbnail"  src='static/favicon.ico'>
+                                <img  class="img-rounded profile-thumbnail"  src="{{ url_for ('static', filename='favicon.ico' )}}">
                             </a>
                         </div>
                         <div class="post-date">{{ moment(post.timestamp).fromNow() }}</div>
@@ -23,6 +23,15 @@
                                 <a href="{{ url_for('.post', id=post.id) }}">
                                     <span class="label label-default">Permalink</span>
                                 </a>
+                                {% if current_user == post.author %}
+                                    <a href="{{ url_for('.edit', id=post.id) }}">
+                                            <span class="label label-primary">Edit</span>
+                                    </a>
+                                {% elif current_user.is_administrator() %}
+                                    <a href="{{ url_for('.edit', id=post.id) }}">
+                                                    <span class="label label-danger">Edit [Admin]</span>
+                                    </a>
+                                {% endif %}
                             </div>
                         </div>
                     </li>
